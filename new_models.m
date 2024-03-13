@@ -4,9 +4,9 @@
 
 // Code to compute models for X_0(N), its AL quotients, and maps to the quotients.
 // Code computes models for which all AL involutions are diagonalised.
-// Main function is eqs_quos
+// Main function is X0NQuotientEquations
 
-// There are many examples included after the function eqs_quos
+// There are many examples included after the function X0NQuotientEquations
 
 // After this there are some extra functions 
 // The main useful one is probably level_quo
@@ -306,9 +306,9 @@ end function;
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++
 ////////////////////////////////////////////////////////
 
-////////////////
-/// eqs_quos /// 
-////////////////
+////////////////////////////
+/// X0NQuotientEquations /// 
+////////////////////////////
 
 // Input: N and a sequence of sequences of Atkin-Lehner indices 
 // (each sequence of indices should be given in ascending order by index)
@@ -322,7 +322,10 @@ end function;
 // X_0(N) should be of genus > 1 and non-hyperelliptic
 // There are no restrictions on the quotient.
 
-eqs_quos := function(N, list_als);
+// eqs_quos := function(N, list_als);
+intrinsic X0NQuotientEquations(N::RngIntElt, list_als::SeqEnum[RngIntElt]) ->
+	  Crv[FldRat]
+{Returns a curve over Q describing the quotient of X_0(N) by the Atkin-Lehners specified in list_als.}
     X, ws,NB,cusp := all_diag_X(N);
     A<[x]> := AmbientSpace(X);
     al_inds := [ m : m in Divisors(N) | GCD(m,N div m) eq 1 and m gt 1];
@@ -392,7 +395,8 @@ eqs_quos := function(N, list_als);
     end for;
 
     return X, ws, pairs, NB, cusp;
-end function;
+//end function;
+end intrinsic;
 
 
 

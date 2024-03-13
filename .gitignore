@@ -1,0 +1,4 @@
+*~
+*.sig
+.magma-scan/*
+*/.magma-scan/*

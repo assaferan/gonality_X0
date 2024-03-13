@@ -1,10 +1,94 @@
 /// this code is used to determine lower bounds for the F_p-gonality and hence the Q-gonality
 
-load "new_models.m";
+// load "new_models.m";
 
-//this function takes a model X of a curve and a prime p of goode reduction of the model as input and checks whether there are any degree 6 functions over F_p. It assumes that #X(F_p)/(p+1)<2 (and checks this) which can be used so that only the R-R spaces of divisors supported on a single F_p-rational point need be checked 
+// some functions for handling partitions
+function get_covered_partitions(pi)
+    parts := {pi};
+    for i in [1..#pi-1] do
+	covered := pi[1..i-1] cat [pi[i]+pi[i+1]] cat pi[i+2..#pi];
+	Include(~parts, Reverse(Sort(covered)));
+    end for;
+    return parts;
+end function;
 
+// Here what we really should do is solve a set cover problem
+// For now, we do a trivial greedy approach
+function minimal_cover(parts)
+    covered := [get_covered_partitions(pi) : pi in parts];
+    _, max_idx := Maximum([#cov : cov in covered]);
+    min_cov := [parts[max_idx]];
+    coverage := covered[max_idx];
+    while (#coverage ne #parts) do
+	covered := [{x : x in cov | x notin coverage} : cov in covered];
+	_, max_idx := Maximum([#cov : cov in covered]);
+	Append(~min_cov, parts[max_idx]);
+	coverage join:= covered[max_idx];
+    end while;
+    return min_cov;
+end function;
 
+//this function takes a model X of a curve and a prime p of good reduction of the model as input and checks whether there are any degree d functions over F_p. It assumes that #X(F_p)/(p+1)< B+1 (and checks this) which can be used so that only the R-R spaces of divisors supported on at most B F_p-rational points need be checked.
+// This generalizes the following functions
+
+intrinsic ExistsFqDegreeUpTo(X::Crv[FldRat], q::RngIntElt, 
+			     d::RngIntElt, B::RngIntElt) -> BoolElt
+{Returns true if there is a degree d function over F_q, supported on at most B F_p rational points.}
+    D:=DefiningEquations(X);
+    D2:=[];
+    for i:=1 to #D do
+	p:=D[i];
+	l:=LCM([Denominator(a):a in Coefficients(p)]);
+	p:=p*l;
+	D2:=D2 cat [p];
+    end for;
+    num_vars := Rank(Universe(D)); 
+    C:=Scheme(ProjectiveSpace(Rationals(),num_vars-1),D2);
+    C2:=ChangeRing(C,GF(q));
+    FF := FunctionField(C2);
+    AFF := AlgorithmicFunctionField(FF);
+    pls := [Places(AFF, i) : i in [1..d]];
+
+    assert (#pls[1])/(q+1) lt B+1;
+
+    s := {};
+    parts := Partitions(d);
+    
+    for pi in parts do
+	vprintf ModularGonality, 1 : "pi = %o\n", pi;
+	one_idx := Index(pi, 1);
+	if one_idx eq 0 then one_idx := #pi + 1; end if;
+	num_ones := 1 + #pi - one_idx;
+	big_divs := CartesianProduct([PowerSequence(Places(AFF)) | 
+				     pls[i] : i in pi[1..one_idx-1]]);
+	num_pts := Min(num_ones, B);
+	all_exps := &cat[Partitions(num_ones,k) : k in [0..num_pts]];
+	all_exps := minimal_cover(all_exps);
+	for big_div in big_divs do
+	    big_divisor := &+[DivisorGroup(AFF) | 
+			 x : x in TupleToList(big_div)];
+	    for exps in all_exps do
+		vprintf ModularGonality, 2 : "exps = %o\n", exps;
+		small_divs := CartesianPower(pls[1], #exps);
+		for small_div in small_divs do
+		    divisor := big_divisor;
+		    divisor +:= &+[DivisorGroup(AFF) | 
+				  exps[i]*small_div[i] : i in [1..#exps]];
+		    vprintf ModularGonality, 3 : "divisor = %o\n", divisor;
+		    Include(~s, Dimension(RiemannRochSpace(divisor)));
+		end for;
+	    end for;
+	end for;
+    end for;
+    if #s eq 1 then 
+	return true; 
+    end if;
+    return false;
+end intrinsic;
+    
+// d = 5, B = 1
+
+//this function takes a model X of a curve and a prime p of good reduction of the model as input and checks whether there are any degree 6 functions over F_p. It assumes that #X(F_p)/(p+1)<2 (and checks this) which can be used so that only the R-R spaces of divisors supported on a single F_p-rational point need be checked 
 
 function fp_deg6_max1(X, q)
 D:=DefiningEquations(X);
@@ -82,7 +166,7 @@ end function;
 
 
 
-
+// d = 5, B = 2
 
 //this function takes a model X of a curve and a prime p of goode reduction of the model as input and checks whether there are any degree 6 functions over F_p. It assumes that #X(F_p)/(p+1)<3 (and checks this) which can be used so that only the R-R spaces of divisors supported on at most 2 F_p-rational point need be checked 
 
@@ -174,7 +258,7 @@ end for;
 end for;
 end for;
 
-/// 3*1+2*1, 4*1+2*1
+/// 3*1+2*1, 4*1+1*1
 for p in pls1 do 
 for q in pls1 do
 s:=s join {Dimension(RiemannRochSpace(p+p+p+q+q))};
@@ -185,6 +269,8 @@ end for;
 if #s eq 1 then return true; else return false; end if;
 end function;
 
+
+// d = 5, B = 0
 
 //this function takes a model X of a curve and a prime p of goode reduction of the model as input and checks whether there are any degree 6 functions over F_p. It assumes that #X(F_p)/(p+1)<1 (and checks this) which can be used so that only the R-R spaces of divisors supported on no F_p-rational point need be checked 
 
@@ -246,7 +332,7 @@ if #s eq 1 then return true; else return false; end if;
 end function;
 
 
-// the following function checke trigonality: if true, the curve is trigonal if false, we haven't proved anything
+// the following function checks trigonality: if true, the curve is trigonal if false, we haven't proved anything
 
 
 function not_trigonal(X, q)
