@@ -15,6 +15,9 @@ end function;
 // Here what we really should do is solve a set cover problem
 // For now, we do a trivial greedy approach
 function minimal_cover(parts)
+    if #parts eq 0 then 
+	return parts;
+    end if;
     covered := [get_covered_partitions(pi) : pi in parts];
     _, max_idx := Maximum([#cov : cov in covered]);
     min_cov := [parts[max_idx]];
@@ -31,9 +34,9 @@ end function;
 //this function takes a model X of a curve and a prime p of good reduction of the model as input and checks whether there are any degree d functions over F_p. It assumes that #X(F_p)/(p+1)< B+1 (and checks this) which can be used so that only the R-R spaces of divisors supported on at most B F_p-rational points need be checked.
 // This generalizes the following functions
 
-intrinsic ExistsFqDegreeUpTo(X::Crv[FldRat], q::RngIntElt, 
-			     d::RngIntElt, B::RngIntElt) -> BoolElt
-{Returns true if there is a degree d function over F_q, supported on at most B F_p rational points.}
+intrinsic ExistsFqDegree(X::Crv[FldRat], q::RngIntElt, 
+			 d::RngIntElt) -> BoolElt
+{Returns true if there is a degree d function over F_q.}
     D:=DefiningEquations(X);
     D2:=[];
     for i:=1 to #D do
@@ -49,9 +52,10 @@ intrinsic ExistsFqDegreeUpTo(X::Crv[FldRat], q::RngIntElt,
     AFF := AlgorithmicFunctionField(FF);
     pls := [Places(AFF, i) : i in [1..d]];
 
+    // We know such a function is supported on at most B F_p rational points.
+    B := Floor((#pls[1])/(q+1));
     assert (#pls[1])/(q+1) lt B+1;
 
-    s := {};
     parts := Partitions(d);
     
     for pi in parts do
@@ -75,17 +79,30 @@ intrinsic ExistsFqDegreeUpTo(X::Crv[FldRat], q::RngIntElt,
 		    divisor +:= &+[DivisorGroup(AFF) | 
 				  exps[i]*small_div[i] : i in [1..#exps]];
 		    vprintf ModularGonality, 3 : "divisor = %o\n", divisor;
-		    Include(~s, Dimension(RiemannRochSpace(divisor)));
+		    RR, RRmap := RiemannRochSpace(divisor);
+		    dim := Dimension(RR);
+		    if dim gt 1 then
+			return true, divisor, RRmap(RR.1);
+		    end if;
 		end for;
 	    end for;
 	end for;
     end for;
-    if #s eq 1 then 
-	return true; 
-    end if;
+   
     return false;
 end intrinsic;
-    
+
+intrinsic ExistsFqDegreeUpTo(X::Crv[FldRat], q::RngIntElt, 
+			     d::RngIntElt) -> BoolElt
+{Returns true if there is a degree at most d function over F_q.}
+    for deg in [1..d] do
+	if ExistsFqDegree(X, q, deg) then
+	    return true;
+	end if;
+    end for;
+    return false;
+end intrinsic;
+
 // d = 5, B = 1
 
 //this function takes a model X of a curve and a prime p of good reduction of the model as input and checks whether there are any degree 6 functions over F_p. It assumes that #X(F_p)/(p+1)<2 (and checks this) which can be used so that only the R-R spaces of divisors supported on a single F_p-rational point need be checked 

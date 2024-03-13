@@ -1,5 +1,5 @@
-// this code gives a lower bound on the gonality of X_0(151)
+// this code gives a lower bound on the gonality of X_0(162)
 load "Fp_gonality.m";
 X:= eqs_quos(162,[]);
-fp_deg6_max1(X,3);
+fp_deg6_max1(X,5);
 
