@@ -49,7 +49,7 @@ intrinsic ExistsFqDegree(X::Crv[FldRat], q::RngIntElt,
     C:=Scheme(ProjectiveSpace(Rationals(),num_vars-1),D2);
     C2:=ChangeRing(C,GF(q));
     FF := FunctionField(C2);
-    AFF := AlgorithmicFunctionField(FF);
+    AFF, FFtoAFF := AlgorithmicFunctionField(FF);
     pls := [Places(AFF, i) : i in [1..d]];
 
     // We know such a function is supported on at most B F_p rational points.
@@ -82,7 +82,7 @@ intrinsic ExistsFqDegree(X::Crv[FldRat], q::RngIntElt,
 		    RR, RRmap := RiemannRochSpace(divisor);
 		    dim := Dimension(RR);
 		    if dim gt 1 then
-			return true, divisor, RRmap(RR.1);
+			return true, divisor, RRmap(RR.1), FFtoAFF;
 		    end if;
 		end for;
 	    end for;
