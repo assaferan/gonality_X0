@@ -9,7 +9,8 @@ intrinsic GonalityBounds(label::MonStgElt) -> SeqEnum
     if g le 1 then
 	qbar_bounds := [g+1,g+1];
     else
-	qbar_bounds := [1, (g+3) div 2];
+	qbar_bounds[1] := Maximum(qbar_bounds[1], 2);
+	qbar_bounds[2] := Minimum(qbar_bounds[2], (g+3) div 2); 
     end if;
     if not pointless then
 	// Proposition A.1 (iv), (v) in [Poonen]
@@ -27,6 +28,13 @@ intrinsic GonalityBounds(label::MonStgElt) -> SeqEnum
 	    q_bounds := [4,4];
 	    return [q_bounds, qbar_bounds];
 	end if;
+	// This is [Poonen, Thm 2.5 (i)]
+	if q_bounds[1] ge 3 then
+	    qbar_bounds[1] := Maximum(qbar_bounds[1], 3);
+	end if;
+	if qbar_bounds[2] ge 3 then
+	    q_bounds[2] := Minimum(q_bounds[2], (qbar_bounds[2]-1)^2);
+	end if;
     else
 	// Bjorn's observation that a genus 3 curve is trigonal 
 	// if and only if it has a rational point
@@ -39,6 +47,7 @@ intrinsic GonalityBounds(label::MonStgElt) -> SeqEnum
     LB := FqGonalityLB(X : BadPrimes := PrimeDivisors(level), 
 			   LowerBound := q_bounds[1],
 			   UpperBound := q_bounds[2]);
+    q_bounds[1] := Maximum(q_bounds[1], LB);
     return [q_bounds, qbar_bounds];
 end intrinsic;
 

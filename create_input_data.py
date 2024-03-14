@@ -25,7 +25,7 @@ for idx,model in enumerate(models):
         else:
             var = "[x]"
         eqs = ",".join(model['equation'])
-        proj_str = "P%s<%s> := ProjectiveSpace(Rationals(), %s);" % (idx, var, nvars)
+        proj_str = "P%s<%s> := ProjectiveSpace(Rationals(), %s);" % (idx, var, nvars-1)
         model_str = "X%s := Curve(P%s, [%s]);" % (idx, idx, eqs)
         output_lines += [proj_str, model_str]
 
