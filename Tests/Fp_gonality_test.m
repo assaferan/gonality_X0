@@ -1,8 +1,7 @@
-// this code gives a lower bound on the gonality of X_0(116)
 
 procedure test_LB_Fq_gonality(datum)
     N, q, d := Explode(datum);
-    printf " %o", N;
+    printf "%o ", N;
     X:= X0NQuotientEquations(N,[]);
     assert not ExistsFqDegreeUpTo(X, q, d-1);
     return;
@@ -13,7 +12,7 @@ data := [<38,  5, 4>,
 	 <53,  7, 4>, // different than paper (5->7)
 	 <61,  3, 4>,
 	 <76,  5, 6>,
-	 <82,  5, 6>,
+	 <82,  5, 6>, // We see some slow down here. look into it.
 	 <84,  5, 6>, // should take more than 1 hour
 	 <86,  3, 6>,
 	 <93,  5, 6>,
@@ -76,7 +75,7 @@ data := [<38,  5, 4>,
 	 <277, 5, 8> //  different than paper (6 -> 5), 7 days
 	]; 
 
-printf "lower bounds for level";
+printf "lower bounds for level ";
 for datum in data do
     test_LB_Fq_gonality(datum);
 end for;

@@ -323,7 +323,7 @@ end function;
 // There are no restrictions on the quotient.
 
 // eqs_quos := function(N, list_als);
-intrinsic X0NQuotientEquations(N::RngIntElt, list_als::SeqEnum[RngIntElt]) ->
+intrinsic X0NQuotientEquations(N::RngIntElt, list_als::SeqEnum[SeqEnum[RngIntElt]]) ->
 	  Crv[FldRat]
 {Returns a curve over Q describing the quotient of X_0(N) by the Atkin-Lehners specified in list_als.}
     X, ws,NB,cusp := all_diag_X(N);

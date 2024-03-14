@@ -2,3 +2,7 @@
 *.sig
 .magma-scan/*
 */.magma-scan/*
+.DS_Store
+input_data
+flasklog
+slow_queries.log
