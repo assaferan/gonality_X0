@@ -5,7 +5,7 @@ intrinsic GonalityBounds(label::MonStgElt) -> SeqEnum
     level := StringToInteger(split_label[1]);
     g := StringToInteger(Split(split_label[3], "-")[1]);
     input := Read("input_data/" * label);
-    pointless, q_bounds, qbar_bounds, models := eval(input);
+    pointless, q_bounds, qbar_bounds, models, model_types := eval(input);
     if g le 1 then
 	qbar_bounds := [g+1,g+1];
     else
@@ -15,7 +15,7 @@ intrinsic GonalityBounds(label::MonStgElt) -> SeqEnum
     if not pointless then
 	// Proposition A.1 (iv), (v) in [Poonen]
 	if g in [0,1] then
-	    q_bounds := [1,1];
+	    q_bounds := [g+1,g+1];
 	    return [q_bounds, qbar_bounds];
 	end if;
 	q_bounds[2] := Minimum(q_bounds[2], g ge 2 select g else g+1);	
@@ -42,12 +42,30 @@ intrinsic GonalityBounds(label::MonStgElt) -> SeqEnum
 	    q_bounds[1] := Maximum(q_bounds[1], 4);
 	end if;
     end if;
-    // For now we only work with the first model. Think it through later.
-    X := models[1];
-    LB := FqGonalityLB(X : BadPrimes := PrimeDivisors(level), 
-			   LowerBound := q_bounds[1],
-			   UpperBound := q_bounds[2]);
-    q_bounds[1] := Maximum(q_bounds[1], LB);
+    for i->X in models do
+	if model_types[i] eq 0 then
+	    // canonical model
+	    // Since we have a canonical model, the curve is not hyperelliptic
+	    qbar_bounds[1] := Maximum(qbar_bounds[1],3);
+	    // Here we use the fact that when we produce a canonical model,
+	    // we only include cubic relations if they are essential
+	    has_cubic := exists(f){f :  f in DefiningEquations(X) | 
+				     Degree(f) eq 3};
+	    has_quintic := exists(f){f :  f in DefiningEquations(X) | 
+				     Degree(f) eq 5};
+	    if (has_cubic) and (not has_quintic) then
+		qbar_bounds := [3, 3];
+	    else
+		 qbar_bounds[1] := Maximum(qbar_bounds[1],4);
+	    end if;
+	    q_bounds[1] := Maximum(q_bounds[1],qbar_bounds[1]);
+	end if;
+	// Q : do we want to try that with every model ?
+	LB := FqGonalityLB(X : BadPrimes := PrimeDivisors(level), 
+			       LowerBound := q_bounds[1],
+			       UpperBound := q_bounds[2]);
+	q_bounds[1] := Maximum(q_bounds[1], LB);
+    end for;
     return [q_bounds, qbar_bounds];
 end intrinsic;
 
