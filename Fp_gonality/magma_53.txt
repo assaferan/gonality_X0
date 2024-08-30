@@ -1,4 +1,4 @@
 // this code gives a lower bound on the gonality of X_0(53)
 load "Fp_gonality.m";
 X:= eqs_quos(53,[]);
-assert not_trigonal(X,5);
+assert not_trigonal(X,7);
