@@ -20,9 +20,11 @@
 // B is a sequence of cusp forms.
 // Computes the canonical embedding.
 canonic := function(B); 
+    MAX_GENUS_CHECK := 10;
     N := Level(B[1]);
     prec := 5*N; 
     dim:=#B;
+    vprintf ModularGonality, 1: "Computing canonical embedding for the sequence of %o forms of prec %o...", dim, prec;
     L<q>:=LaurentSeriesRing(Rationals(),prec);
     R<[x]>:=PolynomialRing(Rationals(),dim);
     Bexp:=[L!qExpansion(B[i],prec) : i in [1..dim]];
@@ -31,6 +33,7 @@ canonic := function(B);
 	tf:=false;
 	while tf eq false do
 		d:=d+1; 
+		vprintf ModularGonality, 2: "\n\tChecking for relations of degree %o...", d;
 		mons:=MonomialsOfDegree(R,d);
 		monsq:=[Evaluate(mon,Bexp) : mon in mons];
 		V:=VectorSpace(Rationals(),#mons);
@@ -40,27 +43,38 @@ canonic := function(B);
 		eqns:=eqns cat [ &+[Eltseq(V!k)[j]*mons[j] : j in [1..#mons] ] : k in Basis(K)  ];
         	I:=Radical(ideal<R | eqns>);
 		X:=Scheme(ProjectiveSpace(R),I);
+		vprintf ModularGonality, 2: "Done!\n Checking if obtained an irreducible curve...";
 		if Dimension(X) eq 1 then
 			if IsIrreducible(X) then
 				X:=Curve(ProjectiveSpace(R),eqns);
-				if Genus(X) eq dim then
-					tf:=true;
+				if (dim gt MAX_GENUS_CHECK) then
+				    vprintf ModularGonality, 3: "Done!\n Skipping check for correct genus...";
+				    tf := true;
+				elif (Genus(X) eq dim) then
+				    vprintf ModularGonality, 3: "Done!\n Checking for the correct genus...";
+				    tf:=true;
 				end if;
 			end if;
 		end if;
 	end while;
     
+    vprintf ModularGonality, 1: "Done!\n";
+    
+    vprintf ModularGonality, 2: "Checking correctness of equations up to the Sturm bound...";
+    
     indexGam:=N*&*[Rationals() | 1+1/p : p in PrimeDivisors(N)];	
-	indexGam:=Integers()!indexGam; // Index of Gamma_0(N) in SL_2(Z)
+    indexGam:=Integers()!indexGam; // Index of Gamma_0(N) in SL_2(Z)
 
-	for eqn in eqns do
-		eqnScaled:=LCM([Denominator(c) : c in Coefficients(eqn)])*eqn;
-		wt:=2*Degree(eqn); // Weight of eqn as a cuspform.
-		hecke:=Ceiling(indexGam*wt/12);  // Hecke=Sturm bound for Gamma_0(N)						 
-	    Bexp1:=[qExpansion(B[i],hecke+10) : i in [1..dim]]; // q-expansions
-		assert Valuation(Evaluate(eqnScaled,Bexp1)) gt hecke+1;
-	end for; // We have now checked the correctness of the equations for X.	
+    for eqn in eqns do
+	eqnScaled:=LCM([Denominator(c) : c in Coefficients(eqn)])*eqn;
+	wt:=2*Degree(eqn); // Weight of eqn as a cuspform.
+	hecke:=Ceiling(indexGam*wt/12);  // Hecke=Sturm bound for Gamma_0(N)						 
+	Bexp1:=[qExpansion(B[i],hecke+10) : i in [1..dim]]; // q-expansions
+	assert Valuation(Evaluate(eqnScaled,Bexp1)) gt hecke+1;
+    end for; // We have now checked the correctness of the equations for X.	
   
+    vprintf ModularGonality, 2: "Done!\n";
+	
  return(X);
 end function;
 
@@ -331,6 +345,7 @@ intrinsic X0NQuotientEquations(N::RngIntElt, list_als::SeqEnum[SeqEnum[RngIntElt
     al_inds := [ m : m in Divisors(N) | GCD(m,N div m) eq 1 and m gt 1];
     pairs := [* *];
     for seq_al in list_als do
+	vprintf ModularGonality, 2: "Computing equations for quotient by ALs %o\n", seq_al; 
         seqw := [ws[i] : i in [1..#ws] | al_inds[i] in seq_al];
         seqw_M := [Matrix(w) : w in seqw];
         Ss := [Diagonal(Mw) : Mw in seqw_M];
@@ -338,31 +353,48 @@ intrinsic X0NQuotientEquations(N::RngIntElt, list_als::SeqEnum[SeqEnum[RngIntElt
         g_quo := genus_quo(N, seq_al);
         is_hyp := is_hyper_quo(N, seq_al);
         
-        PS0 := SetToSequence(Subsets({1..n}));
+	// This is inefficient when n is large (> 30) due to large number of subsets
+        // PS0 := SetToSequence(Subsets({1..n}));
+	assert &and[&and[s[i] in [-1,1] : i in [1..n]] : s in Ss];
+	sign_coords := [[{i : i in [1..n] | s[i] eq (-1)^j} : s in Ss] 
+			: j in [0,1]];
        
         if g_quo gt 1 and is_hyp eq false then // can use canonical embeding for quotient curve.
-             pos_coords := &meet[{P : P in PS0 | #P gt 0 and &+[s[i] : i in P] eq #P} : s in Ss];  
-             pos_seq := SetToSequence(pos_coords);
-             sizes := [#c : c in pos_seq];
-             _,position := Maximum(sizes);
-             coords := Sort(SetToSequence(pos_seq[position]));
+             // pos_coords := &meet[{P : P in PS0 | #P gt 0 and &+[s[i] : i in P] eq #P} : s in Ss];  
+             // pos_seq := SetToSequence(pos_coords);
+             // sizes := [#c : c in pos_seq];
+             // _,position := Maximum(sizes);
+             // coords := Sort(SetToSequence(pos_seq[position]));
+	     // Instead, we only take the positive coordinates
+	     coords := &meet sign_coords[1];
              Bpl := [NB[i] : i in coords];
+	     vprintf ModularGonality, 2: "Nonhyperelliptic, computing canonical model...";
              Y := canonic(Bpl);
+	     vprint ModularGonality, 2: "Done!\n";
              rho := map< X ->Y | [x[i] : i in coords] >;
              pairs := pairs cat [* <Y, rho> *];
              
         else                           // cannot use canonical embedding for quotient curve
                                        // we use a projection map instead (if possible)
                                        // quotient is either elliptic or hyperelliptic
-            PS := [P : P in PS0 | #P gt 1];
-            consts := &meet[{P : P in PS | &+[s[i] : i in P] eq #P or &+[s[i] : i in P] eq -#P} : s in Ss];
-            con := SetToSequence(consts);
-            sizes := [#c : c in con];
-            _,pos := Maximum(sizes);
-            coords := Sort(SetToSequence(con[pos]));
+            // PS := [P : P in PS0 | #P gt 1];
+            // consts := &meet[{P : P in PS | &+[s[i] : i in P] eq #P or &+[s[i] : i in P] eq -#P} : s in Ss];
+            // con := SetToSequence(consts);
+            // sizes := [#c : c in con];
+            // _,pos := Maximum(sizes);
+            // coords := Sort(SetToSequence(con[pos]));
+	    
+	    // There might be a better way to do this
+	    con := [&meet[ sign_coords[idxs[j]][j] : j in [1..#Ss] ] 
+		    : idxs in CartesianPower({1,2},#Ss)];
+	    sizes := [#c : c in con];
+	    _,pos := Maximum(sizes);
+	    coords := Sort(SetToSequence(con[pos]));
+	    vprintf ModularGonality, 2: "Hyperelliptic, using a projection map instead...";
             P := ProjectiveSpace(Rationals(),#coords-1);
             proj := map<A->P|[x[i] : i in coords]>;
             Y1 := Curve(proj(X));
+	    vprintf ModularGonality, 2: "Done!\nVerifying we have a curve of the correct genus...";
             genY1 := Genus(Y1);
             if genY1 eq g_quo then 
                 assert Dimension(Y1) eq 1 and IsIrreducible(Y1);
@@ -373,24 +405,37 @@ intrinsic X0NQuotientEquations(N::RngIntElt, list_als::SeqEnum[SeqEnum[RngIntElt
                 assert Dimension(Y) eq 1 and IsIrreducible(Y); 
                 genY := Genus(Y);
             end if;
-    
+	    
+	    vprintf ModularGonality, 2: "Done!\nGot a curve of genus %o.\n", genY;
 
-             if  genY gt 1 then // curve is hyperelliptic
-                 htf, Z, rho2 := IsHyperelliptic(Y);
-                 assert htf;           
-                 H, rho3 := SimplifiedModel(Z);
-                 rho := rho1*rho2*rho3;
-                 pairs := pairs cat [* <H,rho>*];
-             elif genY eq 0 then 
-                 pairs := pairs cat [* <Y, rho1>*];
-             else assert Genus(Y) eq 1 and g_quo eq 1;
-                 assert Degree(rho1) eq #AutomorphismGroup(X,seqw); // make sure we haven't quotiented out by an extra isogeny
+	    vprintf ModularGonality, 2: "Trying to simplify model...";
+            if  genY gt 1 then // curve is hyperelliptic
+                htf, Z, rho2 := IsHyperelliptic(Y);
+                assert htf;           
+                H, rho3 := SimplifiedModel(Z);
+                rho := rho1*rho2*rho3;
+                pairs := pairs cat [* <H,rho>*];
+            elif genY eq 0 then 
+                pairs := pairs cat [* <Y, rho1>*];
+            else
+		vprintf ModularGonality, 3: "\n\tVerifying genus is 1...";
+		assert Genus(Y) eq 1 and g_quo eq 1;
+		if (n gt 10) then
+		    	vprintf ModularGonality, 3: "\n\tElliptic Curve. Skipping check of degree and automorphism group...";
+		else
+		    vprintf ModularGonality, 3: "\n\tElliptic Curve. Making sure we did not quotient out too many isogenies...";
+                    assert Degree(rho1) eq #AutomorphismGroup(X,seqw); // make sure we haven't quotiented out by an extra isogeny
+		end if;
+		 vprintf ModularGonality, 3: "Done!\n\tSimplifying...";
                  Z, rho2 := EllipticCurve(Y,rho1(cusp));
                  E, rho3 := SimplifiedModel(Z);
+		 vprintf ModularGonality, 3: "Done!\n";
+		 vprintf ModularGonality, 3: "E = %o,j = %o\n", E, jInvariant(E);
                  rho := rho1*rho2*rho3;
                  assert IsZero(N mod Conductor(E));
                  pairs := pairs cat [*< E, rho >*];
-             end if;
+            end if;
+	    vprintf ModularGonality, 2: "Done!\n";
         end if;
     end for;
 
